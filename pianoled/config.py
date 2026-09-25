@@ -34,7 +34,7 @@ DEFAULTS: dict[str, Any] = {
         "lowest_note": 21,        # A0 auf einer 88-Tasten-Klaviatur
         "highest_note": 108,      # C8
         "gamma": 2.2,
-        "max_current_ma": 3000,   # Leistungsbudget des Netzteils, 0 = unbegrenzt
+        "max_current_ma": 2500,   # Leistungsbudget des Netzteils in mA, 0 = unbegrenzt
         "ma_per_channel": 20,     # Strom eines Farbkanals bei 255
         "ma_idle_per_led": 1,
         "fps": 60,

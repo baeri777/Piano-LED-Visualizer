@@ -106,7 +106,7 @@ Transpose-Optionen in der App:
 | OS | Neuinstallation Raspberry Pi OS Lite, Installer unter `install/install.sh` |
 | LCD-Hat | Vorhanden, Statusseite + kleines Menü, Bedienung primär per Smartphone |
 | Strip | 144 LEDs/m, physikalisches Mapping, per App kalibrierbar |
-| Netzteil | ca. 3 A → Leistungsbudget (Default 3000 mA, Empfehlung 2500) |
+| Netzteil | ca. 3 A → Leistungsbudget (Default 2500 mA) |
 | MIDI | USB, Hot-Plug |
 | Zusatzfunktionen | Alle eingebaut, standardmäßig aus (Extras-Tab) |
 | Transpose am Piano | Prüft der Nutzer (Transpose nur auf Klang statt MIDI OUT) |

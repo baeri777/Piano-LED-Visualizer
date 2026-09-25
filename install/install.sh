@@ -3,7 +3,7 @@
 # (Bookworm oder Trixie, 32 oder 64 Bit). Aufruf als root:
 #   sudo bash install/install.sh
 # Optionen über Umgebungsvariablen:
-#   INSTALL_DIR=/opt/pianoled   HOSTNAME=pianoled   SKIP_BOOT_TUNING=1   WITH_BLUETOOTH=1
+#   INSTALL_DIR=/opt/pianoled   HOSTNAME_OVERRIDE=pianoled   SKIP_BOOT_TUNING=1   WITH_BLUETOOTH=1
 set -euo pipefail
 
 INSTALL_DIR="${INSTALL_DIR:-/opt/pianoled}"
@@ -24,7 +24,12 @@ apt-get install -y --no-install-recommends \
 echo "==> Programm nach $INSTALL_DIR kopieren"
 mkdir -p "$INSTALL_DIR"
 if [[ "$SRC_DIR" != "$INSTALL_DIR" ]]; then
-  rsync -a --delete --exclude venv --exclude config.json --exclude '.git' "$SRC_DIR"/ "$INSTALL_DIR"/ 2>/dev/null || cp -r "$SRC_DIR"/. "$INSTALL_DIR"/
+  # .git wird mitkopiert, damit „Update“ in der App (git pull) funktioniert
+  if command -v rsync >/dev/null; then
+    rsync -a --delete --exclude venv --exclude config.json "$SRC_DIR"/ "$INSTALL_DIR"/
+  else
+    cp -r "$SRC_DIR"/. "$INSTALL_DIR"/
+  fi
 fi
 mkdir -p "$INSTALL_DIR/Songs"
 

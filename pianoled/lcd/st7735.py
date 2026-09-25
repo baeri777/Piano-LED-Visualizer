@@ -11,8 +11,8 @@ import numpy as np
 
 WIDTH = 128
 HEIGHT = 128
-X_ADJ = 2
-Y_ADJ = 1
+X_ADJ = 1   # entspricht LCD_X_Adjust = LCD_Y im Waveshare-Code
+Y_ADJ = 2
 
 PIN_RST = 27
 PIN_DC = 25
