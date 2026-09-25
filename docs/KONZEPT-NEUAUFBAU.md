@@ -98,7 +98,16 @@ Transpose-Optionen in der App:
 | Pi Zero 2 W (4× A53) | Problemlos: Renderer 60 Hz, Web-UI parallel, Latenz Taste→LED < 10 ms. |
 | Pi Zero (W) 1 (1× ARMv6) | Machbar mit Python bei ereignisgetriebener Architektur und numpy; Renderer auf 30–40 Hz begrenzen. Web-UI-Aktivität kann kurz spürbar sein. Alternative wäre ein Go-Binary (schnellerer Start, weniger RAM), aber schlechter selbst anzupassen. |
 
-## 3. Klärungspunkte (siehe Chat)
+## 3. Entscheidungen
 
-Siehe Fragen im Chat: Pi-Modell, OS/Neuinstallation, LCD-Hat, Strip-Details, Verkabelung/Netzteil,
-MIDI-Anschluss, benötigte Features (Synthesia, Aufnahme, Sequenzen), Sprache der UI.
+| Punkt | Entscheidung |
+|---|---|
+| Pi-Modell | Raspberry Pi Zero 2 W (Python-Umsetzung, 60 fps Renderer) |
+| OS | Neuinstallation Raspberry Pi OS Lite, Installer unter `install/install.sh` |
+| LCD-Hat | Vorhanden, Statusseite + kleines Menü, Bedienung primär per Smartphone |
+| Strip | 144 LEDs/m, physikalisches Mapping, per App kalibrierbar |
+| Netzteil | ca. 3 A → Leistungsbudget (Default 3000 mA, Empfehlung 2500) |
+| MIDI | USB, Hot-Plug |
+| Zusatzfunktionen | Alle eingebaut, standardmäßig aus (Extras-Tab) |
+| Transpose am Piano | Prüft der Nutzer (Transpose nur auf Klang statt MIDI OUT) |
+| Sprache | Deutsch |

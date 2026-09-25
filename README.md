@@ -1,146 +1,118 @@
+# Piano LED Visualizer 2.0
 
-# Piano LED Visualizer
+LED-Visualizer für Digitalpianos auf dem Raspberry Pi: Über jeder gedrückten Taste leuchtet
+die passende LED. Komplett neu aufgebaut mit Smartphone-Bedienung, WLAN-Hotspot-Fallback,
+Transpose-Unterstützung und Selbstheilung gegen hängende LEDs.
 
-## [![contributions welcome](https://img.shields.io/badge/contributions-welcome-brightgreen.svg?style=flat)](https://github.com/onlaj)
+Zielhardware: Raspberry Pi Zero 2 W, WS2812B-Streifen mit 144 LEDs/m (176 LEDs für 88 Tasten),
+Piano per USB-MIDI (getestet gedacht für Roland RD-700NX), optional Waveshare 1,44"-LCD-Hat.
 
-[![Everything Is AWESOME](https://i.imgur.com/xpfZ0Z6.png)](https://www.youtube.com/watch?v=IZgYViHcXdM "Piano LED Visualizer")
+## Was neu ist
 
-# What you need:
+| Thema | Vorher | Jetzt |
+|---|---|---|
+| Bedienung | Nur LCD-Menü | Smartphone-App (PWA) unter `http://pianoled.local`, LCD optional |
+| Stabilität | Busy-Loop, Threads schreiben parallel auf die LEDs, Fehler verschluckt | Ereignisgetrieben, ein Renderer-Thread besitzt den Strip, systemd-Watchdog + Auto-Restart |
+| Hängende LEDs | Kein Schutz | Periodischer Full-Refresh, Stuck-Note-Timeout, "All Notes Off", Panic-Taste |
+| Piano an/aus | Nur beim Start erkannt | Hot-Plug: verbindet automatisch neu |
+| Transpose | Nicht vorhanden | +/- in der App, Kalibrierung per tiefster Taste, Pedal-Hack, optional automatisch per Roland-SysEx |
+| WLAN | Nichts | Netz per App wählen, Hotspot `PianoLED` als Fallback, `pianoled.local` per mDNS |
+| Boot | Volles Raspbian, rc.local | Raspberry Pi OS Lite, Dienst wartet nicht auf Netzwerk, unnötige Dienste aus |
+| Strom | 50 % Helligkeit ohne Schutz | Leistungsbudget in mA, Frame wird automatisch gedimmt |
+| Performance | 100 % CPU | Leerlauf nahe 0 %, numpy-Framebuffer, nur geänderte Pixel werden gesendet |
 
-  - Piano with MIDI or USB output
-  - MIDI to USB interface (if your piano doesn't have USB output) ~~[Amazon US](https://amzn.to/2xZUipg) | [Aliexpress](http://s.click.aliexpress.com/e/b9mjFaIy)~~ (cheap midi interfaces might not work as intended, I recommend hardware from more known brands. I personally use iConnectivity mio [Amazon US](https://amzn.to/2nhsYBl) )
-  - Raspberry Pi Zero WH [Amazon US](https://amzn.to/2TPz3CQ) | [Aliexpress](https://s.click.aliexpress.com/e/_dXc8jGl) | [Aliexpress #2](http://s.click.aliexpress.com/e/3r32Dass)
-  - MicroSD card (16GB is more than enough) [Amazon US](https://amzn.to/2oR93cC) | [Aliexpress](http://s.click.aliexpress.com/e/mGNi7sl2)
-  - USB OTG [Amazon US](https://amzn.to/3aYWVJj) | [Aliexpress](https://s.click.aliexpress.com/e/_d7FjmJD)
-  - WS2812B LED Strip (*at least 1.5m with 144 diodes/meter*)  [Amazon US](https://amzn.to/2JTFpuh) | [Aliexpress](http://s.click.aliexpress.com/e/dFyC7NO)
-  - Power Supply (*5V 6A is enough to light 172 LEDs @50% power*)  [Amazon US](https://amzn.to/2JViZJ3) | [Aliexpress](http://s.click.aliexpress.com/e/hUgrv6s)
-  - DC 5.5x2.5mm socket with quick connection [Amazon US](https://amzn.to/2YizYOC) | [Aliexpress](http://s.click.aliexpress.com/e/T8YSkbq)
-  - Waveshare LCD TFT 1,44'' 128x128px [Amazon US](https://amzn.to/2YkW5nC) | [Aliexpress](http://s.click.aliexpress.com/e/cpk00blQ)
-  - Some wires
+Alle Zusatzfunktionen (Synthesia, Aufnahme, MIDI-Wiedergabe, Pedal-Presets, Leerlauf-Animation)
+sind eingebaut, aber standardmäßig **aus** und werden in der App unter „Extras“ aktiviert.
 
-**Not required but worth to have to make everything look neat:**
+## Installation
 
-  - Custom 3d printed case (*I attached STL file with modified 3d model, there is additional space and holes for power socket and wires, [here](https://www.thingiverse.com/thing:3393553) is original model*) 
-  - Braid for cables [Amazon US](https://amzn.to/2yd2Fhz) | [Aliexpress](http://s.click.aliexpress.com/e/cG7ur6Di)
-  - Heat shrink bands [Amazon US](https://amzn.to/2SsSYok) | [Aliexpress](http://s.click.aliexpress.com/e/UwKVLo8)
-  - Aluminium LED Profile with diffuser (*highly recommend to search for right one in local shops*) [pic#1](https://i.imgur.com/MF7dd1R.png) [pic#2](https://i.imgur.com/fFWOs3v.png)
-  - Double side tape to mount everything on piano
-  - Windows 10 laptop/tablet with bluetooth to run Synthesia
+1. Raspberry Pi OS **Lite** (Bookworm oder Trixie) mit dem Raspberry Pi Imager auf die SD-Karte
+   schreiben. Im Imager WLAN, Benutzer und SSH eintragen.
+2. Per SSH anmelden und ausführen:
 
-**Total cost (excluding piano and tablet) should be 75-100 USD**
-*Disclosure: All of the links above are affiliate links, meaning, at no additional cost to you, I will earn a commission if you click through and make a purchase.*
+   ```bash
+   sudo apt-get install -y git
+   git clone https://github.com/baeri777/Piano-LED-Visualizer.git
+   cd Piano-LED-Visualizer
+   sudo bash install/install.sh
+   sudo reboot
+   ```
 
-## Software preparations
-Install [Raspbian](https://www.raspberrypi.org/documentation/installation/installing-images/) on you Raspberry Pi.
-This step requires to connect monitor, keyboard and/or mouse to your RPi. If you can't do it I suggest you to follow this guide: [Raspberry Pi Setup Without a Monitor, Keyboard or a Mouse](https://www.terminalbytes.com/raspberry-pi-without-monitor-keyboard/)
+3. Nach dem Neustart auf dem Handy `http://pianoled.local` öffnen (oder die IP des Pi).
+   Im Browser „Zum Startbildschirm hinzufügen“ wählen, dann verhält sich die Seite wie eine App.
 
-## Automatic midi connection and setting Raspberry Pi as Bluetooth MIDI host
+Ohne bekanntes WLAN startet nach etwa 45 Sekunden der Hotspot **PianoLED** (Passwort `pianoled123`).
+Damit verbinden, `http://10.42.0.1` öffnen und unter „WLAN“ das Heimnetz eintragen.
 
+## Verkabelung
 
-Here is [instruction](https://neuma.studio/rpi-as-midi-host.html)
-Just do following parts and skip the others:
-- configuring automatic midi connection **(this is required even if you don't need Bluetooth feature)**
-- midi bluetooth setup
- 
-If you have problems with connecting your PC to RPI try to add 
+- LED-Daten an **GPIO 18** (PWM), Masse von Netzteil und Pi verbinden.
+- LEDs mit eigenem 5-V-Netzteil versorgen, Stromeinspeisung möglichst an beiden Enden.
+- Empfehlung: Level-Shifter (3,3 V → 5 V) für die Datenleitung, sonst flackern einzelne Pixel.
+- In der App unter „Strip → Strom“ das Netzteil-Limit eintragen (bei 3 A etwa 2500 mA).
+  Der Visualizer dimmt dann automatisch, bevor die Spannung einbricht.
+- Onboard-Audio wird vom Installer deaktiviert (Konflikt mit dem LED-Signal).
 
-    DisablePlugins = pnat
-to */etc/bluetooth/main.conf* file. You will have to restart RPI after making this change.
+## Transpose
 
-If you still have problems with connecting your Windows tablet/pc try to install Blueman, graphical bluetooth manager
+Sendet das Piano transponierte Noten (am RD-700NX „Transpose +2“), leuchten ohne Korrektur
+die falschen LEDs. Drei Wege:
 
-    sudo apt-get install blueman
-***
-If you don't need BT connection you can skip "midi bluetooth setup" part, but you need to install few libraries anyway.
+1. **App**: Unter „Transpose“ denselben Wert wie am Piano einstellen.
+2. **Kalibrieren**: „Kalibrieren“ tippen, dann die tiefste Taste (A0) drücken. Fertig.
+   Mit dem Pedal-Hack geht das ohne Handy: Soft-Pedal dreimal kurz treten, dann A0 drücken.
+3. **Automatisch** (Roland): Wenn am Piano „Tx Edit Data“ aktiv ist und es beim Transponieren
+   einen SysEx sendet, kann die App die Adresse lernen und folgt danach dem Piano.
+   Der MIDI-Monitor unter „Extras“ zeigt, ob so eine Nachricht ankommt.
 
-    sudo apt-get install libjack0 
-    sudo apt-get install libjack-dev 
-    sudo apt-get install libasound2-dev
+Prüfe außerdem, ob das RD-700NX Transpose nur auf den Klang und nicht auf MIDI OUT anwenden kann.
+Dann ist gar keine Korrektur nötig.
 
-## Learning to play with Synthesia
-Official instruction:
+## Strip einrichten
 
-> First, make sure the "Midi.UseWinRtMidi" option is enabled:  
-> 1.  Hold your Shift key while launching Synthesia (to open the configuration window).
-> 2.  Find the "Midi.UseWinRTMidi" entry in the Setting drop-down box.
-> 3.  Add a check mark to the "Value" box.
+Unter „Strip → Testen“ leuchten mit „A0 · C4 · C8“ die LEDs über der tiefsten Taste, dem
+mittleren C und der höchsten Taste. Passt es nicht: Versatz und LED-Abstand anpassen, bei
+gespiegeltem Streifen „Richtung umkehren“. „Rot/Grün/Blau“ prüft die Farbreihenfolge.
 
-BT support on different devices:
+## LCD-Hat
 
-> -   BLE MIDI on macOS: completely automatic and supported
-> -   BLE MIDI on iOS: completely automatic and supported
-> -   BLE MIDI on Win10: enable the "Midi.UseWinRTMidi" advanced option to try and use Microsoft's  [complete mess](https://www.synthesiagame.com/forum/viewtopic.php?p=47530#p47530) of a UWP driver.
-> -   BLE MIDI on Android: if your device supports the "Android M MIDI" feature, just connect to the MIDI device using  [these instructions](https://synthesiagame.com/forum/viewtopic.php?p=47541#p47541)  and it should "work" fine, with all of Android's awful latency and dropped events
+Statusseite mit WLAN, IP, Piano-Verbindung, Transpose und Helligkeit.
+Joystick links/rechts: Helligkeit, hoch/runter: Transpose. KEY1 öffnet das Menü
+(Preset, Kalibrieren, Hotspot, Neustart, Ausschalten), KEY2 zurück, KEY3 alle LEDs aus.
+Das Display schaltet sich nach einigen Minuten ab und wacht per Tastendruck auf.
 
-You also have to enable light support in Synthesia by setting "Key Light" option to "Finger-based channel".
-In Visualizer settings you have to change "input" to RPI Bluetooth. After that when learning new song next-to-play keys will be illuminated in corresponding colors, blue for left hand and green for right hand.
+## Entwicklung ohne Pi
 
-If you are getting mixed colors, meaning that leds are light up with your predefined and next-to-play colors at the same time, you can use "Skipped notes" option to disable one of them.
+```bash
+pip install -r requirements-dev.txt
+python -m pianoled --simulate --port 8080     # Web-UI mit simuliertem LED-Streifen
+python -m pytest
+```
 
-## Using cable instead of Bluetooth
-If you can't get stable bluetooth connection there are alternative ways that requires the purchase of additional equipment.
-The optimal solution I found is this [device.](http://compasflamenco.com/midi-c-3/midi-usbusb-p-4.html) It allows you to connect your RPi with any equipment that supports midi through USB. It can also be useful if you want less delay and fewer missed notes. [Here](https://streamable.com/nec84) is some short comparison.
+Im Simulationsmodus zeigt die Startseite den Streifen als Farbbalken. MIDI wird per
+`python-rtmidi` erkannt, sobald ein Gerät angeschlossen ist.
 
-## Connecting LED Strip to Raspberry Pi and enabling SPI
-There is no point to reinvent the wheel again, here is a nice [tutorial](https://tutorials-raspberrypi.com/connect-control-raspberry-pi-ws2812-rgb-led-strips/)
+## Aufbau
 
-If you are wondering how to connect wires to RPI if screen hat is taking all pins here is a [picture](https://i.imgur.com/7KhwM7r.jpg) of how I did it. There should be a gap between RPI and screen so you can solder your wires or just wrap cables around the pins and separate them with heat shrink bands.
+```
+pianoled/
+  config.py        Defaults, Validierung, atomares Speichern (config.json)
+  keymap.py        Note → LED (physikalisches Modell, Transpose, Richtung, Versatz)
+  state.py         Tastenzustand, Sustain, Stuck-Timeout
+  renderer.py      Render-Thread mit festem Takt, Effekte, Testbilder, Leerlauf-Animation
+  leds.py          ws281x-Treiber, Helligkeit, Leistungsbegrenzung, Gamma
+  midi_input.py    MIDI per Callback, Hot-Plug
+  transpose.py     Kalibrierung, Pedal-Trigger, Roland-SysEx-Lernfunktion
+  app.py           Verdrahtung, Presets, Ereignisse
+  web/             aiohttp-Server, REST + WebSocket, PWA (static/)
+  lcd/             ST7735-Treiber und LCD-Bedienung
+  system/          NetworkManager (nmcli), Systeminfo, Neustart/Update
+install/           install.sh, systemd-Unit, optional Bluetooth-MIDI
+```
 
-You also need to [enable SPI](https://www.raspberrypi-spy.co.uk/2014/08/enabling-the-spi-interface-on-the-raspberry-pi/)
+Dienst-Protokoll: `journalctl -u pianoled -f`. Update über die App („System → Update“)
+oder `cd /opt/pianoled && git pull && sudo systemctl restart pianoled`.
 
+## Lizenz
 
-## Putting everything together
-After connecting all cables as described above everything should fit nicely to case.
-If you don't have a 3d printer (like me) try to find some company or private person who will print it for you. I paid 12USD for my print. [RPICaseModel.stl](https://github.com/onlaj/Piano-LED-Visualizer/blob/master/RPICaseModel.stl "RPICaseModel.stl")
-
-## Running Visualizer
-
-Download or clone this repository into your RPI.
-
-    git clone https://github.com/onlaj/Piano-LED-Visualizer
-
-Using [PIP](https://pypi.org/project/pip/) install all libraries listed in [requirements.txt](https://github.com/onlaj/Piano-LED-Visualizer/blob/master/requirements.txt "requirements.txt") file
-Run visualizer.py with command
-
-> sudo -E python visualizer.py
-
-You can auto run Visualizer on RPi boot, just follow this tutorial: [How To Autorun A Python Script On Raspberry Pi Boot](https://www.raspberrypi-spy.co.uk/2015/02/how-to-autorun-a-python-script-on-raspberry-pi-boot/)
-
-## Using the sequences
-In the visualizer menu you can find setting called "Sequences". It allows you to change led properties while playing using third key on Waveshare hat or your piano pedals.
-You can edit or create new sequences by editing "sequences.xml" file.
-The "control_number" defines which pedal is used to go to the next step.
-
-|Control number| Pedal name |
-|--|--|
-| 64 | Damper Pedal (Sustain/Hold) On/Off  |
-| 65 | Portamento On/Off |
-| 66 | Sostenuto On/Off |
-| 67 | Soft Pedal On/Off |
-
-The "next_step" value decide if next step is activated when you press or release the pedal. For example if you want to change settings after fully pressing Sostenuto pedal you should write it like:
-
-    <control_number>66</control_number> 
-    <next_step>126</next_step>
-   127 is the maximum value when pedal is fully pressed, so you are saying to script to change settings when value is bigger than 126.
-This is how it should look when you want to change settings when fully releasing pedal.
-
-      <control_number>66</control_number> 
-	  <next_step>-1</next_step>
-
- (-) before the number means that next step will be activated when pedal value is below 1
-
-You can also use sequences as a way to save your presets under custom names.
-
-
-
-
-
-![Image](https://i.imgur.com/9MgNUl5.jpg?1)
-![Image](https://i.imgur.com/WGxGdNM.jpg?2)
-![enter image description here](https://i.imgur.com/J1wA1rU.jpg)
-![Image](https://i.imgur.com/5riJs9k.jpg?1)
-![Image](https://i.imgur.com/LLzeff2.jpg?1)
-![Image](https://i.imgur.com/ZnYBxTp.jpg)
-![Image](https://i.imgur.com/FVWnBv1.jpg?2)
-![Image](https://i.imgur.com/e97ilNU.jpg?1)
+MIT, siehe LICENSE. Ursprung: [onlaj/Piano-LED-Visualizer](https://github.com/onlaj/Piano-LED-Visualizer).

@@ -1,7 +1,6 @@
-RPi.GPIO
-webcolors
-psutil
-mido
-Pillow
-python-rtmidi
-rpi-ws281x
+# Systempakete (per apt, siehe install/install.sh): numpy, pillow, aiohttp, spidev, gpiozero
+rpi-ws281x>=5.0.0; platform_machine in "armv6l armv7l aarch64"
+python-rtmidi>=1.5
+mido>=1.3
+aiohttp>=3.8
+numpy>=1.20

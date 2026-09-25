@@ -1,0 +1,23 @@
+[Unit]
+Description=Piano LED Visualizer
+# Kein Warten auf Netzwerk: LEDs sollen sofort reagieren, WLAN kommt parallel.
+After=local-fs.target
+Wants=NetworkManager.service
+
+[Service]
+Type=notify
+WorkingDirectory=/opt/pianoled
+ExecStart=/opt/pianoled/venv/bin/python -m pianoled
+Restart=always
+RestartSec=2
+WatchdogSec=60
+NotifyAccess=all
+# rpi_ws281x braucht Root für DMA/PWM
+User=root
+Nice=-10
+Environment=PYTHONUNBUFFERED=1
+KillSignal=SIGTERM
+TimeoutStopSec=8
+
+[Install]
+WantedBy=multi-user.target

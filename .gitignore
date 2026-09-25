@@ -1,2 +1,9 @@
+__pycache__/
 *.pyc
 *.pyo
+venv/
+config.json
+config.json.broken
+.pytest_cache/
+Songs/*
+!Songs/La Campanella.mid

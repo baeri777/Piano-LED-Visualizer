@@ -1,0 +1,7 @@
+{
+  "strip": { "led_count": 176, "gpio_pin": 18, "led_pitch_mm": 6.944, "led_offset": 0, "leds_per_key": 2, "reverse": false, "max_current_ma": 2500 },
+  "look": { "brightness": 50, "color_mode": "single", "light_mode": "normal", "color": [255, 255, 255] },
+  "transpose": { "semitones": 0 },
+  "network": { "hotspot": { "enabled": true, "ssid": "PianoLED", "password": "pianoled123" } },
+  "features": { "lcd": { "enabled": true } }
+}
