@@ -27,7 +27,7 @@ DEFAULTS: dict[str, Any] = {
         "channel": 0,
         "color_order": "GRB",     # WS2812B: GRB
         "reverse": False,         # True, wenn LED 0 bei der höchsten Taste liegt
-        "led_pitch_mm": 1000 / 144,
+        "led_pitch_mm": 6.944,     # 144 LEDs/m
         "key_pitch_mm": 23.5,     # Breite einer weißen Taste (Standardklaviatur)
         "led_offset": 0,          # Verschiebung in LEDs (kann negativ sein)
         "leds_per_key": 2,        # 1..3 LEDs pro Taste leuchten
@@ -56,6 +56,7 @@ DEFAULTS: dict[str, Any] = {
         "adjacent": {"mode": "off", "color": [255, 255, 255]},  # off | same | rgb
         "sustain_holds_light": True,
         "stuck_note_timeout_s": 90,
+        "startup_animation": True,
     },
     "transpose": {
         "semitones": 0,
@@ -153,7 +154,12 @@ def validate(cfg: dict) -> dict:
         adj["mode"] = "off"
     adj["color"] = _color(adj.get("color"))
     tr = cfg["transpose"]
-    tr["semitones"] = int(_clamp(int(tr.get("semitones", 0)), -48, 48))
+    tr["semitones"] = int(_clamp(int(tr.get("semitones", 0)), -24, 24))
+    hs = cfg["network"]["hotspot"]
+    hs["ssid"] = (str(hs.get("ssid") or "").strip() or "PianoLED")[:32]
+    pw = str(hs.get("password") or "")
+    hs["password"] = pw if 8 <= len(pw) <= 63 else DEFAULTS["network"]["hotspot"]["password"]
+    hs["fallback_after_s"] = int(_clamp(int(hs.get("fallback_after_s", 45)), 10, 600))
     cfg["web"]["port"] = int(_clamp(int(cfg["web"].get("port", 80)), 1, 65535))
     return cfg
 
@@ -167,12 +173,20 @@ def _color(value) -> list[int]:
 
 
 class Config:
-    """Thread-sicherer Zugriff auf die Konfiguration mit Änderungs-Callbacks."""
+    """Thread-sicherer Zugriff auf die Konfiguration mit Änderungs-Callbacks.
+
+    Gespeichert wird verzögert (`SAVE_DELAY_S`): Zieht jemand einen Schieberegler,
+    entstehen Dutzende Änderungen pro Sekunde, auf die SD-Karte geht aber nur eine
+    Datei. `flush()` schreibt sofort (beim Beenden).
+    """
+
+    SAVE_DELAY_S = 1.5
 
     def __init__(self, path: str | None):
         self.path = path
         self._lock = threading.RLock()
         self._listeners: list[Callable[[dict], None]] = []
+        self._save_timer: threading.Timer | None = None
         self.data: dict = copy.deepcopy(DEFAULTS)
         self.load()
 
@@ -191,6 +205,24 @@ class Config:
                     pass
         with self._lock:
             self.data = validate(_merge(DEFAULTS, data))
+
+    def _schedule_save(self) -> None:
+        with self._lock:
+            if self._save_timer is not None:
+                return
+            self._save_timer = threading.Timer(self.SAVE_DELAY_S, self.flush)
+            self._save_timer.daemon = True
+            self._save_timer.start()
+
+    def flush(self) -> None:
+        with self._lock:
+            if self._save_timer is not None:
+                self._save_timer.cancel()
+                self._save_timer = None
+        try:
+            self.save()
+        except Exception as exc:
+            log.error("Konfiguration konnte nicht gespeichert werden: %s", exc)
 
     def save(self) -> None:
         if not self.path:
@@ -244,10 +276,7 @@ class Config:
             self.data = validate(_merge(DEFAULTS, self.data))
             snap = copy.deepcopy(self.data)
         if save:
-            try:
-                self.save()
-            except Exception as exc:
-                log.error("Konfiguration konnte nicht gespeichert werden: %s", exc)
+            self._schedule_save()
         for cb in list(self._listeners):
             try:
                 cb(snap)

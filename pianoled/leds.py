@@ -131,6 +131,7 @@ class FramePipeline:
 
 
 def make_driver(strip_cfg: dict, simulate: bool = False, on_show=None) -> LedDriver:
+    """Echten Treiber erzeugen; ohne Hardware (oder im Simulationsmodus) den Null-Treiber."""
     if not simulate:
         try:
             return Ws281xDriver(strip_cfg)

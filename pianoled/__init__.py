@@ -4,4 +4,4 @@ Ereignisgetriebener LED-Visualizer für ein Digitalpiano (MIDI) auf dem Raspberr
 mit Smartphone-Weboberfläche, WLAN-Hotspot-Fallback und optionalem LCD-Hat.
 """
 
-__version__ = "2.0.0"
+__version__ = "2.1.0"

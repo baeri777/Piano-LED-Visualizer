@@ -1,4 +1,4 @@
-"""Treiber für den Waveshare 1.44" LCD-Hat (ST7735S, 128×128) über spidev + gpiozero.
+"""Hardware-Treiber für den Waveshare 1.44" LCD-Hat (ST7735S, 128×128) über spidev + gpiozero.
 
 Portiert aus dem Waveshare-Beispielcode (LCD_1in44.py), reduziert auf das Nötige:
 Init-Sequenz, Fensteradressierung, Bild anzeigen (RGB565), Hintergrundbeleuchtung.

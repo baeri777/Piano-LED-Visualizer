@@ -1,118 +1,133 @@
-# Piano LED Visualizer 2.0
+# Piano LED Visualizer
 
-LED-Visualizer für Digitalpianos auf dem Raspberry Pi: Über jeder gedrückten Taste leuchtet
-die passende LED. Komplett neu aufgebaut mit Smartphone-Bedienung, WLAN-Hotspot-Fallback,
-Transpose-Unterstützung und Selbstheilung gegen hängende LEDs.
+Über jeder Taste, die du spielst, leuchtet eine LED. Gesteuert wird alles bequem vom Handy.
+Das System repariert sich bei Fehlern selbst, und die WLAN-Einrichtung läuft ohne Tastatur und Bildschirm.
 
-Zielhardware: Raspberry Pi Zero 2 W, WS2812B-Streifen mit 144 LEDs/m (176 LEDs für 88 Tasten),
-Piano per USB-MIDI (getestet gedacht für Roland RD-700NX), optional Waveshare 1,44"-LCD-Hat.
+**Hardware:** Raspberry Pi Zero 2 W · WS2812B-Streifen mit 144 LEDs/m (176 LEDs für 88 Tasten) ·
+Piano per USB-MIDI (z. B. Roland RD-700NX) · optional Waveshare 1,44"-Display-Hat.
 
-## Was neu ist
-
-| Thema | Vorher | Jetzt |
-|---|---|---|
-| Bedienung | Nur LCD-Menü | Smartphone-App (PWA) unter `http://pianoled.local`, LCD optional |
-| Stabilität | Busy-Loop, Threads schreiben parallel auf die LEDs, Fehler verschluckt | Ereignisgetrieben, ein Renderer-Thread besitzt den Strip, systemd-Watchdog + Auto-Restart |
-| Hängende LEDs | Kein Schutz | Periodischer Full-Refresh, Stuck-Note-Timeout, "All Notes Off", Panic-Taste |
-| Piano an/aus | Nur beim Start erkannt | Hot-Plug: verbindet automatisch neu |
-| Transpose | Nicht vorhanden | +/- in der App, Kalibrierung per tiefster Taste, Pedal-Hack, optional automatisch per Roland-SysEx |
-| WLAN | Nichts | Netz per App wählen, Hotspot `PianoLED` als Fallback, `pianoled.local` per mDNS |
-| Boot | Volles Raspbian, rc.local | Raspberry Pi OS Lite, Dienst wartet nicht auf Netzwerk, unnötige Dienste aus |
-| Strom | 50 % Helligkeit ohne Schutz | Leistungsbudget in mA, Frame wird automatisch gedimmt |
-| Performance | 100 % CPU | Leerlauf nahe 0 %, numpy-Framebuffer, nur geänderte Pixel werden gesendet |
-
-Alle Zusatzfunktionen (Synthesia, Aufnahme, MIDI-Wiedergabe, Pedal-Presets, Leerlauf-Animation)
-sind eingebaut, aber standardmäßig **aus** und werden in der App unter „Extras“ aktiviert.
+---
 
 ## Installation
 
-1. Raspberry Pi OS **Lite** (Bookworm oder Trixie) mit dem Raspberry Pi Imager auf die SD-Karte
-   schreiben. Im Imager WLAN, Benutzer und SSH eintragen.
-2. Per SSH anmelden und ausführen:
+1. **SD-Karte vorbereiten.** Mit dem [Raspberry Pi Imager](https://www.raspberrypi.com/software/)
+   „Raspberry Pi OS Lite (64-bit)“ aufspielen. In den Imager-Einstellungen SSH aktivieren.
+   WLAN kannst du dort eintragen, musst du aber nicht, denn der Visualizer hat eine eigene Einrichtung.
+2. **Installieren** (per SSH auf dem Pi):
 
    ```bash
    sudo apt-get install -y git
    git clone https://github.com/baeri777/Piano-LED-Visualizer.git
-   cd Piano-LED-Visualizer
-   sudo bash install/install.sh
+   sudo bash Piano-LED-Visualizer/install/install.sh
    sudo reboot
    ```
 
-3. Nach dem Neustart auf dem Handy `http://pianoled.local` öffnen (oder die IP des Pi).
-   Im Browser „Zum Startbildschirm hinzufügen“ wählen, dann verhält sich die Seite wie eine App.
+3. **Loslegen.** Auf dem Handy `http://pianoled.local` öffnen und im Browser-Menü
+   „Zum Home-Bildschirm“ wählen. Dann startet die Steuerung wie eine App.
 
-Ohne bekanntes WLAN startet nach etwa 45 Sekunden der Hotspot **PianoLED** (Passwort `pianoled123`).
-Damit verbinden, `http://10.42.0.1` öffnen und unter „WLAN“ das Heimnetz eintragen.
+## WLAN einrichten
 
-## Verkabelung
+Kennt der Visualizer kein WLAN oder ist es nicht erreichbar, öffnet er den Hotspot **PianoLED**.
 
-- LED-Daten an **GPIO 18** (PWM), Masse von Netzteil und Pi verbinden.
-- LEDs mit eigenem 5-V-Netzteil versorgen, Stromeinspeisung möglichst an beiden Enden.
-- Empfehlung: Level-Shifter (3,3 V → 5 V) für die Datenleitung, sonst flackern einzelne Pixel.
-- In der App unter „Strip → Strom“ das Netzteil-Limit eintragen (bei 3 A etwa 2500 mA).
-  Der Visualizer dimmt dann automatisch, bevor die Spannung einbricht.
-- Onboard-Audio wird vom Installer deaktiviert (Konflikt mit dem LED-Signal).
+| So geht's | |
+|---|---|
+| 1. | Auf dem Display stehen Netzname, Passwort und Adresse. Joystick drücken zeigt einen **QR-Code**. Mit der Handykamera scannen, und das Handy verbindet sich sofort. |
+| 2. | Das Handy öffnet von selbst die Einrichtungsseite (Captive Portal). Sonst `http://10.42.0.1` aufrufen. |
+| 3. | Dein WLAN antippen, Passwort eingeben, „Verbinden“. |
+| 4. | Das Display zeigt „WLAN verbunden“ und die neue IP-Adresse. Handy zurück ins Heim-WLAN, `http://pianoled.local` öffnen. |
+
+Ist das Passwort falsch, kommt der Hotspot nach kurzer Zeit zurück, und die Seite nennt den Grund.
+Fällt das Heim-WLAN aus, wartet der Visualizer 45 Sekunden und öffnet dann den Hotspot. Kommt das
+WLAN zurück, wechselt er selbst wieder hinein. Hinweis: Der Pi Zero 2 W funkt nur im 2,4-GHz-Band.
+
+## Die App
+
+| Tab | Inhalt |
+|---|---|
+| **Spielen** | Live-Tastatur in den echten LED-Farben, Helligkeit, Transpose, Farbwahl, Presets, „Alle LEDs aus“ |
+| **Licht** | Einfarbig, Farbbereiche oder Regenbogen · Normal, Ausblenden oder Anschlagstärke · Hintergrundlicht, Nachbar-LEDs |
+| **WLAN** | Verbindungsstatus mit IP, Netzwerk wechseln, gespeicherte Netze, Hotspot-Einstellungen |
+| **Mehr** | Streifen einrichten mit Testbildern, Transpose-Automatik, Extras, Display-Fernbedienung, MIDI-Monitor, System, Protokoll |
+
+Zusatzfunktionen wie Synthesia, Aufnahme, MIDI-Wiedergabe, Presets per Pedal und Leerlauf-Animation
+sind eingebaut, aber ausgeschaltet. Du aktivierst sie unter **Mehr → Extras**.
 
 ## Transpose
 
-Sendet das Piano transponierte Noten (am RD-700NX „Transpose +2“), leuchten ohne Korrektur
-die falschen LEDs. Drei Wege:
+Steht das Piano auf „+2“, sendet es jede Note zwei Halbtöne höher. Damit die LEDs trotzdem über den
+richtigen Tasten leuchten, muss der Visualizer den Versatz kennen:
 
-1. **App**: Unter „Transpose“ denselben Wert wie am Piano einstellen.
-2. **Kalibrieren**: „Kalibrieren“ tippen, dann die tiefste Taste (A0) drücken. Fertig.
-   Mit dem Pedal-Hack geht das ohne Handy: Soft-Pedal dreimal kurz treten, dann A0 drücken.
-3. **Automatisch** (Roland): Wenn am Piano „Tx Edit Data“ aktiv ist und es beim Transponieren
-   einen SysEx sendet, kann die App die Adresse lernen und folgt danach dem Piano.
-   Der MIDI-Monitor unter „Extras“ zeigt, ob so eine Nachricht ankommt.
+- **Von Hand:** Im Tab „Spielen“ mit − und + denselben Wert einstellen, oder am Display mit dem Joystick hoch und runter.
+- **Erkennen:** „Erkennen“ tippen und die tiefste Taste drücken. Der Versatz wird berechnet.
+- **Pedal-Trick:** Unter Mehr → Transpose-Automatik einschalten. Dann das Soft-Pedal dreimal schnell treten
+  und die tiefste Taste drücken. Das geht ganz ohne Handy.
+- **Automatisch vom Piano:** Mit „Tx Edit Data“ am RD-700NX kann der Visualizer die Einstellung direkt
+  mitlesen. Die App führt durch das einmalige Anlernen.
 
-Prüfe außerdem, ob das RD-700NX Transpose nur auf den Klang und nicht auf MIDI OUT anwenden kann.
-Dann ist gar keine Korrektur nötig.
+## Display
 
-## Strip einrichten
+| Taste | Statusseite | Menü |
+|---|---|---|
+| Joystick ◀ ▶ | Helligkeit | Wert ändern |
+| Joystick ▲ ▼ | Transpose | Auswahl |
+| Joystick ● | QR-Code (Hotspot beitreten bzw. App öffnen) | Ausführen |
+| KEY1 | Menü | Schließen |
+| KEY2 | Zurück | Zurück |
+| KEY3 | Alle LEDs aus | Alle LEDs aus |
 
-Unter „Strip → Testen“ leuchten mit „A0 · C4 · C8“ die LEDs über der tiefsten Taste, dem
-mittleren C und der höchsten Taste. Passt es nicht: Versatz und LED-Abstand anpassen, bei
-gespiegeltem Streifen „Richtung umkehren“. „Rot/Grün/Blau“ prüft die Farbreihenfolge.
+Die Statusseite zeigt immer den Netzwerkzustand: WLAN-Name und IP, den Hotspot mit Passwort oder
+„Verbinde …“. Nach einigen Minuten ohne Bedienung schaltet sich das Display ab. Ein Tastendruck oder
+eine neue Meldung wie „WLAN verbunden“ oder „Piano getrennt“ weckt es wieder.
 
-## LCD-Hat
+## Stabilität und Selbstheilung
 
-Statusseite mit WLAN, IP, Piano-Verbindung, Transpose und Helligkeit.
-Joystick links/rechts: Helligkeit, hoch/runter: Transpose. KEY1 öffnet das Menü
-(Preset, Kalibrieren, Hotspot, Neustart, Ausschalten), KEY2 zurück, KEY3 alle LEDs aus.
-Das Display schaltet sich nach einigen Minuten ab und wacht per Tastendruck auf.
+| Problem | Was der Visualizer tut |
+|---|---|
+| LEDs bleiben hängen | Stuck-Note-Timeout, „All Notes Off“, regelmäßige komplette Neuübertragung, alle LEDs aus, sobald das Piano getrennt wird |
+| Piano aus- und wieder eingeschaltet | erkennt es und verbindet sich automatisch neu |
+| Ein Teil stürzt ab (MIDI, WLAN, Display, Web) | der Supervisor startet genau diesen Teil neu |
+| LED-Treiber meldet Fehler | Treiber wird neu initialisiert |
+| Programm hängt | systemd-Watchdog startet den Dienst nach 30 s neu |
+| Ganzes System hängt | Hardware-Watchdog startet den Pi neu |
+| Kaputte Einstellungsdatei | Werkseinstellungen, die defekte Datei wird als `.broken` gesichert |
+| Zu schwaches Netzteil | Strombegrenzung dimmt vorher. Die App warnt bei Unterspannung. |
+| SD-Karte | Einstellungen werden gebündelt und atomar geschrieben, das Systemprotokoll liegt im RAM |
 
-## Entwicklung ohne Pi
+## Verkabelung
+
+- LED-Daten an **GPIO 18**. Die Masse von Netzteil, Streifen und Pi verbinden.
+- Den Streifen direkt vom 5-V-Netzteil versorgen, am besten an beiden Enden einspeisen.
+- Ein Level-Shifter (3,3 V → 5 V) auf der Datenleitung verhindert flackernde Pixel.
+- Unter Mehr → LED-Streifen das Netzteil-Limit eintragen. Für 3 A sind 2500 mA ein guter Wert.
+
+## Entwicklung
 
 ```bash
 pip install -r requirements-dev.txt
-python -m pianoled --simulate --port 8080     # Web-UI mit simuliertem LED-Streifen
+python -m pianoled --simulate --port 8080    # läuft ohne Hardware, Streifen und Display als Vorschau in der App
 python -m pytest
 ```
 
-Im Simulationsmodus zeigt die Startseite den Streifen als Farbbalken. MIDI wird per
-`python-rtmidi` erkannt, sobald ein Gerät angeschlossen ist.
-
-## Aufbau
-
 ```
 pianoled/
-  config.py        Defaults, Validierung, atomares Speichern (config.json)
-  keymap.py        Note → LED (physikalisches Modell, Transpose, Richtung, Versatz)
+  __main__.py      Start, Logging, systemd-Watchdog
+  app.py           verbindet alles, Schnittstelle für Web und Display
+  supervisor.py    startet abgestürzte Komponenten neu
+  renderer.py      einziger Thread am LED-Streifen: Ereignisse → Frames
+  keymap.py        Note → LED (Tastengeometrie, Transpose, Richtung, Versatz)
   state.py         Tastenzustand, Sustain, Stuck-Timeout
-  renderer.py      Render-Thread mit festem Takt, Effekte, Testbilder, Leerlauf-Animation
-  leds.py          ws281x-Treiber, Helligkeit, Leistungsbegrenzung, Gamma
+  leds.py          ws281x-Treiber, Helligkeit, Strombegrenzung, Gamma
   midi_input.py    MIDI per Callback, Hot-Plug
-  transpose.py     Kalibrierung, Pedal-Trigger, Roland-SysEx-Lernfunktion
-  app.py           Verdrahtung, Presets, Ereignisse
-  web/             aiohttp-Server, REST + WebSocket, PWA (static/)
-  lcd/             ST7735-Treiber und LCD-Bedienung
-  system/          NetworkManager (nmcli), Systeminfo, Neustart/Update
-install/           install.sh, systemd-Unit, optional Bluetooth-MIDI
+  transpose.py     Pedal-Trick, Roland-SysEx-Anlernen
+  config.py        Einstellungen mit Standardwerten und Prüfung
+  lcd/             screens.py (Bilder), ui.py (Bedienung), device.py (ST7735-Hardware)
+  system/          network.py (WLAN/Hotspot über NetworkManager), sysinfo.py
+  web/             server.py (API, WebSocket, Captive Portal), static/ (App + Einrichtung)
+install/           install.sh, systemd-Dienst, optional Bluetooth-MIDI
 ```
 
-Dienst-Protokoll: `journalctl -u pianoled -f`. Update über die App („System → Update“)
-oder `cd /opt/pianoled && git pull && sudo systemctl restart pianoled`.
+Protokoll auf dem Pi: `journalctl -u pianoled -f` oder in der App unter Mehr → Protokoll.
 
 ## Lizenz
 
-MIT, siehe LICENSE. Ursprung: [onlaj/Piano-LED-Visualizer](https://github.com/onlaj/Piano-LED-Visualizer).
+MIT, siehe LICENSE. Ursprünglich basierend auf [onlaj/Piano-LED-Visualizer](https://github.com/onlaj/Piano-LED-Visualizer).

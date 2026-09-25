@@ -1,23 +1,30 @@
 [Unit]
 Description=Piano LED Visualizer
-# Kein Warten auf Netzwerk: LEDs sollen sofort reagieren, WLAN kommt parallel.
-After=local-fs.target
+Documentation=https://github.com/baeri777/Piano-LED-Visualizer
+# Nicht auf das Netzwerk warten: LEDs sollen sofort reagieren, WLAN kommt parallel.
+After=local-fs.target sound.target
 Wants=NetworkManager.service
+# Nie aufgeben: auch nach vielen Abstürzen weiter neu starten
+StartLimitIntervalSec=0
 
 [Service]
 Type=notify
+NotifyAccess=main
 WorkingDirectory=/opt/pianoled
 ExecStart=/opt/pianoled/venv/bin/python -m pianoled
+# Selbstheilung: Absturz → nach 2 s neu starten; Hänger → Watchdog greift nach 30 s
 Restart=always
 RestartSec=2
-WatchdogSec=60
-NotifyAccess=all
-# rpi_ws281x braucht Root für DMA/PWM
+WatchdogSec=30
+TimeoutStartSec=60
+TimeoutStopSec=8
+KillSignal=SIGTERM
+# rpi_ws281x braucht Root-Rechte für DMA/PWM
 User=root
 Nice=-10
-Environment=PYTHONUNBUFFERED=1
-KillSignal=SIGTERM
-TimeoutStopSec=8
+IOSchedulingClass=realtime
+Environment=PYTHONUNBUFFERED=1 PYTHONDONTWRITEBYTECODE=1
+MemoryMax=300M
 
 [Install]
 WantedBy=multi-user.target

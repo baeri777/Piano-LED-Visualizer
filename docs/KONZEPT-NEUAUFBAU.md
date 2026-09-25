@@ -111,3 +111,27 @@ Transpose-Optionen in der App:
 | Zusatzfunktionen | Alle eingebaut, standardmäßig aus (Extras-Tab) |
 | Transpose am Piano | Prüft der Nutzer (Transpose nur auf Klang statt MIDI OUT) |
 | Sprache | Deutsch |
+
+## 4. Stand 2.1 – Überarbeitung
+
+Ergänzt gegenüber 2.0:
+
+- **Supervisor** startet abgestürzte Komponenten (MIDI, WLAN, Display, Web) mit wachsender Wartezeit neu.
+  Der systemd-Watchdog wird nur bedient, solange der Renderer lebt. Dazu kommen der Hardware-Watchdog
+  und `StartLimitIntervalSec=0`.
+- **Renderer** wacht bei jeder Note sofort auf, statt auf den nächsten Takt zu warten. Die Latenz liegt bei wenigen
+  Millisekunden. Im Leerlauf läuft nur ein Refresh pro Sekunde. Das Rendern ist vektorisiert, und der LED-Treiber
+  wird nach Fehlern neu aufgebaut.
+- **Piano getrennt** schaltet sofort alle LEDs aus, weil die Note-Offs fehlen.
+- **WLAN** ist als Zustandsmaschine gebaut. Ohne gespeichertes WLAN startet der Hotspot sofort, sonst nach 45 s ohne
+  Verbindung. Vor dem Hotspot wird gescannt, Verbindungsaufträge laufen im Hintergrund, und die Fehler sind
+  verständlich formuliert.
+- **Captive Portal:** Im Hotspot beantwortet dnsmasq alle DNS-Anfragen mit 10.42.0.1. Der Webserver leitet die
+  Prüf-URLs der Handys auf `/setup` um.
+- **Display:** Die Statusseite zeigt WLAN und IP oder Hotspot, Passwort und Adresse. Dazu kommen ein QR-Code zum
+  Beitreten bzw. zum Öffnen der App, Hinweise bei Zustandswechseln und ein Menü. Die Bilder sind reine Funktionen
+  und in der App als Live-Vorschau mit Fernbedienung zu sehen.
+- **App** neu gestaltet: vier Tabs, Live-Tastatur in echten Farben, Bottom-Sheets, automatisches Wiederverbinden
+  und Neuladen nach Updates.
+- **Konfiguration** wird verzögert gespeichert (SD-Karte), das Systemprotokoll liegt im RAM.
+- Fehler behoben: Die MIDI-Wiedergabe hat keine Tasten beleuchtet.

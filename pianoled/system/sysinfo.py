@@ -108,6 +108,9 @@ def update(repo_dir: str) -> tuple[bool, str]:
         if os.path.exists(pip) and os.path.exists(req):
             p2 = subprocess.run([pip, "install", "-q", "-r", req], capture_output=True, text=True, timeout=600)
             out += p2.stdout + p2.stderr
+        python = os.path.join(repo_dir, "venv", "bin", "python")
+        if os.path.exists(python):
+            subprocess.run([python, "-m", "compileall", "-q", os.path.join(repo_dir, "pianoled")], timeout=300)
         return True, out
     except Exception as exc:
         return False, str(exc)

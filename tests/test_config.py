@@ -13,10 +13,14 @@ def test_load_defaults_when_missing(tmp_path):
 def test_update_saves_and_validates(tmp_path):
     path = tmp_path / "config.json"
     c = Config(str(path))
-    c.update({"look.brightness": 500, "look.color_mode": "kaputt", "transpose.semitones": 3})
+    c.update({"look.brightness": 500, "look.color_mode": "kaputt", "transpose.semitones": 3,
+              "network.hotspot.password": "kurz"})
     assert c.get("look.brightness") == 100
     assert c.get("look.color_mode") == "single"
     assert c.get("transpose.semitones") == 3
+    assert c.get("network.hotspot.password") == "pianoled123"
+    assert not path.exists()            # verzögertes Speichern
+    c.flush()
     data = json.loads(path.read_text())
     assert data["transpose"]["semitones"] == 3
 

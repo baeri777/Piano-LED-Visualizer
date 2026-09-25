@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#0b0d12">
+<title>Piano LED einrichten</title>
+<link rel="icon" href="/icon.svg">
+<link rel="stylesheet" href="/static/style.css">
+</head>
+<body class="setup">
+<main>
+  <div class="hero">
+    <img class="logo" src="/icon.svg" alt="">
+    <h1>Piano LED einrichten</h1>
+    <p>Verbinde den Visualizer mit deinem WLAN.<br>Danach steuerst du ihn von jedem Gerät im Netz.</p>
+  </div>
+  <div class="card" id="picker"></div>
+  <div class="card" id="skip">
+    <h2>Ohne WLAN nutzen</h2>
+    <p class="sub" style="margin:0 0 12px">Du kannst den Visualizer auch direkt über diesen Hotspot bedienen. Die WLAN-Einrichtung findest du später in der App unter „WLAN“.</p>
+    <a class="btn block" href="/">Zur Steuerung</a>
+  </div>
+</main>
+<script src="/static/core.js"></script>
+<script src="/static/wifi.js"></script>
+<script>
+  const picker = new WifiPicker($("#picker"), { onDone: () => $("#skip").classList.add("hidden") });
+  picker.start();
+</script>
+</body>
+</html>

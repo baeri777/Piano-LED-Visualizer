@@ -3,285 +3,339 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="theme-color" content="#0f1115">
+<meta name="theme-color" content="#0b0d12">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Piano LED">
 <title>Piano LED</title>
 <link rel="manifest" href="/manifest.json">
 <link rel="icon" href="/icon.svg">
 <link rel="apple-touch-icon" href="/icon.svg">
-<link rel="stylesheet" href="/style.css">
+<link rel="stylesheet" href="/static/style.css">
 </head>
 <body>
-<header>
+<header class="top">
+  <img class="logo" src="/icon.svg" alt="">
   <h1>Piano LED</h1>
-  <span id="pill-midi" class="pill">MIDI …</span>
-  <span id="pill-wifi" class="pill">WLAN …</span>
+  <button class="chip" id="chip-piano" data-go="more/midi"><i></i><span>Piano</span></button>
+  <button class="chip" id="chip-wifi" data-go="wifi"><i></i><span>WLAN</span></button>
 </header>
-<main>
+<div id="banners"></div>
 
-<!-- ===== Start ===== -->
-<section class="tab active" id="tab-start">
+<main>
+<!-- ============================ SPIELEN ============================ -->
+<section class="view" id="view-play">
   <div class="card">
-    <h2>Live</h2>
-    <div class="piano" id="piano"></div>
-    <div class="strip" id="strip"></div>
-    <p class="hint" id="live-hint">Warte auf Piano …</p>
+    <div class="piano" id="piano" aria-label="Live-Tastatur"></div>
+    <div class="strip hidden" id="sim-strip" title="Simulierter LED-Streifen"></div>
+    <div class="live" id="live"></div>
   </div>
+
   <div class="card">
-    <h2>Helligkeit</h2>
-    <div class="row"><input type="range" min="1" max="100" data-cfg="look.brightness"><span class="val" data-val="look.brightness"></span></div>
-    <div class="hint" id="power-hint"></div>
+    <h2>Helligkeit <span class="right val" data-val="look.brightness" data-unit=" %"></span></h2>
+    <div class="row"><input type="range" class="big" min="1" max="100" data-cfg="look.brightness" aria-label="Helligkeit"></div>
   </div>
+
   <div class="card">
-    <h2>Presets</h2>
-    <div class="list" id="preset-list"></div>
-    <div class="btns" style="margin-top:8px"><button class="btn" id="btn-save-preset">Aktuelles Aussehen speichern</button></div>
+    <h2>Transpose <span class="right sub" id="tp-hint"></span></h2>
+    <div class="tp">
+      <button class="round" id="tp-down" aria-label="Transpose minus">−</button>
+      <div class="num" id="tp-num">0</div>
+      <button class="round" id="tp-up" aria-label="Transpose plus">+</button>
+    </div>
+    <div class="btns" style="margin-top:14px">
+      <button class="btn" id="tp-calibrate">Erkennen</button>
+      <button class="btn" id="tp-zero">Auf 0</button>
+    </div>
+    <div class="calib hidden" id="calib-box"><span class="spin"></span><span>Drück jetzt die <b>tiefste Taste</b> am Piano …</span></div>
+    <p class="hint">Stell hier denselben Wert ein wie am Piano. Oder tippe „Erkennen“ und drück die tiefste Taste.</p>
   </div>
+
   <div class="card">
-    <div class="btns"><button class="btn danger" id="btn-panic">Alle LEDs aus (Panic)</button></div>
+    <h2>Farbe</h2>
+    <div class="swatches" id="swatches"></div>
   </div>
+
+  <div class="card">
+    <h2>Presets <span class="right sub">Lange drücken zum Löschen</span></h2>
+    <div class="presets" id="presets"></div>
+  </div>
+
+  <button class="btn danger block" id="panic">Alle LEDs aus</button>
 </section>
 
-<!-- ===== Farben ===== -->
-<section class="tab" id="tab-look">
+<!-- ============================ LICHT ============================ -->
+<section class="view" id="view-light">
   <div class="card">
     <h2>Farbmodus</h2>
-    <div class="seg" data-seg="look.color_mode">
-      <button data-v="single">Einfarbig</button><button data-v="multicolor">Bereiche</button><button data-v="rainbow">Regenbogen</button>
+    <div class="seg" data-seg="look.color_mode"><button data-v="single">Einfarbig</button><button data-v="multicolor">Bereiche</button><button data-v="rainbow">Regenbogen</button></div>
+    <div id="mode-single" class="stack" style="margin-top:14px">
+      <div class="row"><span class="label">Farbe</span><input type="color" class="pick" data-color="look.color"></div>
     </div>
-    <div id="look-single" style="margin-top:12px">
-      <div class="row"><label>Farbe</label><input type="color" data-color="look.color"></div>
-      <div class="btns" id="quick-colors"></div>
-    </div>
-    <div id="look-multicolor" style="margin-top:12px">
+    <div id="mode-multicolor" style="margin-top:14px">
       <div id="mc-list"></div>
-      <div class="btns"><button class="btn small" id="mc-add">Bereich hinzufügen</button></div>
-      <p class="hint">Bereiche in MIDI-Noten (21 = A0, 60 = mittleres C, 108 = C8). Überlappen sich Bereiche, wird zufällig gewählt.</p>
+      <button class="btn sm" id="mc-add"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>Bereich</button>
+      <p class="hint">Jede Farbe gilt für einen Tastenbereich (A0 bis C8). Überlappen sich Bereiche, wird zufällig gemischt.</p>
     </div>
-    <div id="look-rainbow" style="margin-top:12px">
+    <div id="mode-rainbow" style="margin-top:14px">
       <div class="row"><label>Verschiebung</label><input type="range" min="0" max="255" data-cfg="look.rainbow.offset"><span class="val" data-val="look.rainbow.offset"></span></div>
-      <div class="row"><label>Skalierung</label><input type="range" min="10" max="400" data-cfg="look.rainbow.scale"><span class="val" data-val="look.rainbow.scale"></span></div>
+      <div class="row"><label>Breite</label><input type="range" min="10" max="400" data-cfg="look.rainbow.scale"><span class="val" data-val="look.rainbow.scale" data-unit=" %"></span></div>
       <div class="row"><label>Bewegung</label><input type="range" min="-100" max="100" data-cfg="look.rainbow.speed"><span class="val" data-val="look.rainbow.speed"></span></div>
     </div>
   </div>
+
   <div class="card">
-    <h2>Leuchtmodus</h2>
-    <div class="seg" data-seg="look.light_mode">
-      <button data-v="normal">Normal</button><button data-v="fading">Ausblenden</button><button data-v="velocity">Anschlag</button>
+    <h2>Leuchtverhalten</h2>
+    <div class="seg" data-seg="look.light_mode"><button data-v="normal">Normal</button><button data-v="fading">Ausblenden</button><button data-v="velocity">Anschlag</button></div>
+    <p class="hint" id="light-desc"></p>
+    <div class="row" id="row-fade"><label>Ausblendzeit</label><input type="range" min="100" max="4000" step="50" data-cfg="look.fade_ms"><span class="val" data-val="look.fade_ms" data-unit=" ms"></span></div>
+    <div class="row" id="row-vmin"><label>Leise Töne</label><input type="range" min="0" max="80" data-cfg="look.velocity_min"><span class="val" data-val="look.velocity_min" data-unit=" %"></span></div>
+    <label class="row"><span class="label">Sustain-Pedal hält das Licht</span><span class="switch"><input type="checkbox" data-cfg="look.sustain_holds_light"><span></span></span></label>
+  </div>
+
+  <div class="card">
+    <h2>Hintergrund</h2>
+    <label class="row"><span class="label">Grundbeleuchtung</span><span class="switch"><input type="checkbox" data-cfg="look.backlight.enabled"><span></span></span></label>
+    <div id="backlight-opts">
+      <div class="row"><span class="label">Farbe</span><input type="color" class="pick" data-color="look.backlight.color"></div>
+      <div class="row"><label>Stärke</label><input type="range" min="1" max="60" data-cfg="look.backlight.brightness"><span class="val" data-val="look.backlight.brightness" data-unit=" %"></span></div>
     </div>
-    <div class="row" style="margin-top:12px"><label>Ausblendzeit</label><input type="range" min="100" max="5000" step="50" data-cfg="look.fade_ms"><span class="val" data-val="look.fade_ms" data-unit=" ms"></span></div>
-    <div class="row"><label>Min. Helligkeit (Anschlag)</label><input type="range" min="0" max="100" data-cfg="look.velocity_min"><span class="val" data-val="look.velocity_min" data-unit=" %"></span></div>
-    <div class="toggle"><span>Sustain-Pedal hält Licht</span><input type="checkbox" data-cfg="look.sustain_holds_light"></div>
   </div>
-  <div class="card">
-    <h2>Hintergrundlicht</h2>
-    <div class="toggle"><span>Aktiv</span><input type="checkbox" data-cfg="look.backlight.enabled"></div>
-    <div class="row"><label>Farbe</label><input type="color" data-color="look.backlight.color"></div>
-    <div class="row"><label>Helligkeit</label><input type="range" min="0" max="100" data-cfg="look.backlight.brightness"><span class="val" data-val="look.backlight.brightness" data-unit=" %"></span></div>
-  </div>
+
   <div class="card">
     <h2>Nachbar-LEDs</h2>
-    <div class="seg" data-seg="look.adjacent.mode"><button data-v="off">Aus</button><button data-v="same">Gleiche Farbe</button><button data-v="rgb">Eigene Farbe</button></div>
-    <div class="row" style="margin-top:10px"><label>Eigene Farbe</label><input type="color" data-color="look.adjacent.color"></div>
+    <div class="seg" data-seg="look.adjacent.mode"><button data-v="off">Aus</button><button data-v="same">Gleiche Farbe</button><button data-v="rgb">Eigene</button></div>
+    <div class="row hidden" id="adj-color"><span class="label">Farbe</span><input type="color" class="pick" data-color="look.adjacent.color"></div>
+    <p class="hint">Lässt die LEDs neben einer Taste mitleuchten, damit das Licht breiter wirkt.</p>
+  </div>
+
+  <div class="card">
+    <label class="row"><span class="label">Startanimation beim Einschalten</span><span class="switch"><input type="checkbox" data-cfg="look.startup_animation"><span></span></span></label>
   </div>
 </section>
 
-<!-- ===== Transpose ===== -->
-<section class="tab" id="tab-transpose">
-  <div class="card">
-    <h2>Transpose</h2>
-    <div class="bigt" id="transpose-value">0</div>
-    <div class="big">
-      <button class="btn" id="tr-minus">−</button>
-      <button class="btn small" id="tr-zero">0</button>
-      <button class="btn" id="tr-plus">+</button>
-    </div>
-    <p class="hint">Stelle hier denselben Wert ein wie am Piano (z. B. +2), damit die LEDs über den richtigen Tasten leuchten.</p>
-  </div>
-  <div class="card">
-    <h2>Kalibrieren</h2>
-    <p class="hint" style="margin-bottom:8px">Am schnellsten: Auf „Kalibrieren“ tippen und dann die <b>tiefste Taste (A0)</b> am Piano drücken. Der Versatz wird automatisch berechnet.</p>
-    <div class="btns"><button class="btn primary" id="btn-calibrate">Kalibrieren</button></div>
-    <p class="hint" id="calib-status"></p>
-  </div>
-  <div class="card">
-    <h2>Pedal-Hack</h2>
-    <div class="toggle"><span>Kalibrierung per Pedal starten</span><input type="checkbox" data-cfg="transpose.pedal_calibration.enabled"></div>
-    <div class="row"><label>Pedal (CC)</label>
-      <select data-cfg="transpose.pedal_calibration.control" data-int>
-        <option value="67">Soft-Pedal (67)</option><option value="66">Sostenuto (66)</option><option value="64">Sustain (64)</option>
-      </select></div>
-    <div class="row"><label>Anzahl Drücke</label><input type="range" min="2" max="5" data-cfg="transpose.pedal_calibration.presses"><span class="val" data-val="transpose.pedal_calibration.presses"></span></div>
-    <p class="hint">Das Pedal mehrmals schnell hintereinander treten, dann die tiefste Taste drücken. So geht Transpose ohne Handy.</p>
-  </div>
-  <div class="card">
-    <h2>Automatisch vom Piano (Roland SysEx)</h2>
-    <div class="toggle"><span>Transpose vom Piano übernehmen</span><input type="checkbox" data-cfg="transpose.roland_sysex.enabled"></div>
-    <p class="hint" id="sysex-status"></p>
-    <details><summary>Einrichten (Lernfunktion)</summary>
-      <p class="hint">Voraussetzung: Am RD-700NX muss „Tx Edit Data“ (System/MIDI) eingeschaltet sein. Ablauf: 1) Am Piano Transpose auf 0 stellen, „Start“ tippen. 2) Transpose auf +1 stellen, „Nächster Schritt“. 3) Transpose auf +2 stellen, „Nächster Schritt“. 4) „Fertig“.</p>
-      <div class="btns"><button class="btn small" id="learn-start">Start</button><button class="btn small" id="learn-next">Nächster Schritt</button><button class="btn small primary" id="learn-finish">Fertig</button></div>
-      <p class="hint" id="learn-status"></p>
-    </details>
-  </div>
-</section>
-
-<!-- ===== Strip ===== -->
-<section class="tab" id="tab-strip">
-  <div class="card">
-    <h2>LED-Streifen</h2>
-    <div class="row"><label>Anzahl LEDs</label><input type="number" min="1" max="2000" data-cfg="strip.led_count" data-int style="width:100px"></div>
-    <div class="row"><label>LEDs pro Meter</label><select id="led-density"><option value="144">144</option><option value="120">120</option><option value="96">96</option><option value="60">60</option><option value="0">Eigener Wert</option></select></div>
-    <div class="row"><label>LED-Abstand (mm)</label><input type="number" step="0.01" data-cfg="strip.led_pitch_mm" data-float style="width:110px"></div>
-    <div class="row"><label>Tastenbreite (mm)</label><input type="number" step="0.1" data-cfg="strip.key_pitch_mm" data-float style="width:110px"></div>
-    <div class="row"><label>Versatz (LEDs)</label><input type="range" min="-30" max="30" data-cfg="strip.led_offset"><span class="val" data-val="strip.led_offset"></span></div>
-    <div class="row"><label>LEDs pro Taste</label><div class="seg" data-seg="strip.leds_per_key" data-int style="flex:2"><button data-v="1">1</button><button data-v="2">2</button><button data-v="3">3</button></div></div>
-    <div class="toggle"><span>Richtung umkehren (LED 0 am hohen Ende)</span><input type="checkbox" data-cfg="strip.reverse"></div>
-    <div class="row"><label>Farbreihenfolge</label><select data-cfg="strip.color_order"><option>GRB</option><option>RGB</option><option>BGR</option><option>RBG</option><option>GBR</option><option>BRG</option></select></div>
-    <div class="row"><label>Gamma</label><input type="range" min="1" max="3" step="0.1" data-cfg="strip.gamma" data-float><span class="val" data-val="strip.gamma"></span></div>
-  </div>
-  <div class="card">
-    <h2>Testen</h2>
-    <div class="btns">
-      <button class="btn small" data-test='{"kind":"keys","keys":[21,60,108],"seconds":8}'>A0 · C4 · C8</button>
-      <button class="btn small" data-test='{"kind":"rgb","seconds":9}'>Rot/Grün/Blau</button>
-      <button class="btn small" data-test='{"kind":"chase","seconds":10}'>Lauflicht</button>
-      <button class="btn small" data-test='{"kind":"all","color":[255,255,255],"seconds":5}'>Alle weiß</button>
-    </div>
-    <p class="hint">A0·C4·C8: Leuchten die LEDs über der tiefsten Taste, dem mittleren C und der höchsten Taste? Wenn nicht, Versatz und LED-Abstand anpassen. Rot/Grün/Blau: Zeigt der Streifen die Farben in dieser Reihenfolge? Sonst Farbreihenfolge ändern.</p>
-  </div>
-  <div class="card">
-    <h2>Strom</h2>
-    <div class="row"><label>Netzteil-Limit (mA)</label><input type="number" step="100" min="0" data-cfg="strip.max_current_ma" data-int style="width:110px"></div>
-    <p class="hint">Schutz vor Spannungseinbrüchen: Übersteigt der geschätzte Strom das Limit, wird der Frame automatisch gedimmt. 0 = aus. Bei einem 3-A-Netzteil ca. 2500 eintragen.</p>
-    <div class="hint" id="power-hint2"></div>
-  </div>
-  <div class="card">
-    <h2>Hardware</h2>
-    <div class="row"><label>GPIO-Pin</label><select data-cfg="strip.gpio_pin" data-int><option value="18">18 (PWM0)</option><option value="12">12 (PWM0)</option><option value="21">21 (PCM)</option><option value="10">10 (SPI)</option></select></div>
-    <p class="hint">Änderungen an GPIO oder LED-Anzahl werden erst nach einem Neustart des Dienstes wirksam (System → Dienst neu starten).</p>
-  </div>
-</section>
-
-<!-- ===== WLAN ===== -->
-<section class="tab" id="tab-wifi">
-  <div class="card">
-    <h2>Status</h2>
-    <div id="wifi-state"></div>
-  </div>
-  <div class="card">
-    <h2>Verbinden</h2>
-    <div class="btns" style="margin-bottom:8px"><button class="btn small" id="wifi-scan">Netzwerke suchen</button></div>
-    <div class="list" id="wifi-list"></div>
-    <div style="margin-top:10px">
-      <input type="text" id="wifi-ssid" placeholder="Netzwerkname (SSID)" autocapitalize="off">
-      <input type="password" id="wifi-pass" placeholder="Passwort" style="margin-top:8px">
-      <div class="btns" style="margin-top:8px"><button class="btn primary" id="wifi-connect">Verbinden</button></div>
-    </div>
-    <p class="hint">Bist du gerade über den Hotspot verbunden, bricht die Verbindung beim Wechsel ab. Verbinde dein Handy danach mit demselben WLAN und öffne http://pianoled.local</p>
-  </div>
+<!-- ============================ WLAN ============================ -->
+<section class="view" id="view-wifi">
+  <div class="card" id="net-card"></div>
+  <div class="card"><h2>Netzwerk wechseln</h2><div id="wifi-picker"></div></div>
+  <div class="card" id="known-card"><h2>Gespeicherte Netzwerke</h2><div class="list" id="known"></div></div>
   <div class="card">
     <h2>Hotspot</h2>
-    <div class="toggle"><span>Hotspot als Fallback</span><input type="checkbox" data-cfg="network.hotspot.enabled"></div>
-    <div class="row"><label>Name</label><input type="text" data-cfg="network.hotspot.ssid" style="width:160px"></div>
-    <div class="row"><label>Passwort</label><input type="text" data-cfg="network.hotspot.password" style="width:160px"></div>
-    <div class="row"><label>Nach (s) ohne WLAN</label><input type="number" data-cfg="network.hotspot.fallback_after_s" data-int style="width:90px"></div>
-    <div class="btns"><button class="btn small" id="hotspot-now">Hotspot jetzt starten</button><button class="btn small" id="hotspot-stop">Hotspot beenden</button></div>
-    <div class="list" id="wifi-known" style="margin-top:10px"></div>
+    <label class="row"><span class="label">Hotspot, wenn kein WLAN da ist</span><span class="switch"><input type="checkbox" data-cfg="network.hotspot.enabled"><span></span></span></label>
+    <div class="row"><label>Name</label><input type="text" data-cfg="network.hotspot.ssid" maxlength="32" style="max-width:190px"></div>
+    <div class="row"><label>Passwort</label><input type="text" data-cfg="network.hotspot.password" data-minlen="8" maxlength="63" style="max-width:190px"></div>
+    <div class="row"><label>Warten ohne WLAN</label><input type="range" min="15" max="300" step="15" data-cfg="network.hotspot.fallback_after_s"><span class="val" data-val="network.hotspot.fallback_after_s" data-unit=" s"></span></div>
+    <p class="hint">Findet der Visualizer kein bekanntes WLAN, öffnet er diesen Hotspot. Das Handy zeigt dann automatisch die Einrichtung an. Name und Passwort stehen auch auf dem Display.</p>
   </div>
 </section>
 
-<!-- ===== Extras ===== -->
-<section class="tab" id="tab-extras">
-  <div class="card">
-    <h2>Leerlauf-Animation</h2>
-    <div class="toggle"><span>Aktiv</span><input type="checkbox" data-cfg="features.idle_animation.enabled"></div>
-    <div class="row"><label>Nach Minuten</label><input type="range" min="1" max="60" data-cfg="features.idle_animation.after_min"><span class="val" data-val="features.idle_animation.after_min"></span></div>
-    <div class="row"><label>Animation</label><select data-cfg="features.idle_animation.animation" id="anim-select"></select></div>
-    <div class="row"><label>Helligkeit</label><input type="range" min="1" max="100" data-cfg="features.idle_animation.brightness"><span class="val" data-val="features.idle_animation.brightness" data-unit=" %"></span></div>
-  </div>
-  <div class="card">
-    <h2>Pedal-Presets</h2>
-    <div class="toggle"><span>Mit Pedal durch Presets schalten</span><input type="checkbox" data-cfg="features.pedal_presets.enabled"></div>
-    <div class="row"><label>Pedal (CC)</label><select data-cfg="features.pedal_presets.control" data-int><option value="66">Sostenuto (66)</option><option value="67">Soft (67)</option><option value="64">Sustain (64)</option></select></div>
-  </div>
-  <div class="card">
-    <h2>Synthesia / Lern-Software</h2>
-    <div class="toggle"><span>Aktiv</span><input type="checkbox" data-cfg="features.synthesia.enabled"></div>
-    <div class="row"><label>Linke Hand</label><input type="color" data-color="features.synthesia.left_color"></div>
-    <div class="row"><label>Rechte Hand</label><input type="color" data-color="features.synthesia.right_color"></div>
-    <div class="toggle"><span>Nur Synthesia-Noten zeigen</span><input type="checkbox" data-cfg="features.synthesia.hide_normal_notes"></div>
-    <p class="hint">Synthesia sendet die nächsten Noten auf Kanal 12 (links) und 11 (rechts), wenn „Key Light: Finger-based channel“ eingestellt ist. Bluetooth-MIDI muss separat eingerichtet werden (siehe README).</p>
-  </div>
-  <div class="card">
-    <h2>Aufnahme</h2>
-    <div class="toggle"><span>Aktiv</span><input type="checkbox" data-cfg="features.recorder.enabled"></div>
-    <div id="rec-ui">
-      <div class="btns"><button class="btn small" id="rec-start">Aufnahme starten</button><button class="btn small primary" id="rec-stop">Stoppen &amp; speichern</button><button class="btn small" id="rec-cancel">Abbrechen</button></div>
-      <p class="hint" id="rec-status"></p>
+<!-- ============================ MEHR ============================ -->
+<section class="view" id="view-more">
+  <div id="more-home">
+    <div class="group">
+      <button class="nav-item" data-go="more/strip"><span class="ic" style="background:#3b6cf5" data-icon="strip"></span>LED-Streifen einrichten<span class="chev" data-icon="chevron"></span></button>
+      <button class="nav-item" data-go="more/transpose"><span class="ic" style="background:#e08a13" data-icon="transpose"></span>Transpose-Automatik<span class="chev" data-icon="chevron"></span></button>
+      <button class="nav-item" data-go="more/extras"><span class="ic" style="background:#8a55f0" data-icon="star"></span>Extras<span class="chev" data-icon="chevron"></span></button>
+    </div>
+    <div class="group">
+      <button class="nav-item" data-go="more/display"><span class="ic" style="background:#12a39a" data-icon="screen"></span>Display<span class="chev" data-icon="chevron"></span></button>
+      <button class="nav-item" data-go="more/midi"><span class="ic" style="background:#d9468f" data-icon="midi"></span>Piano &amp; MIDI<span class="chev" data-icon="chevron"></span></button>
+      <button class="nav-item" data-go="more/system"><span class="ic" style="background:#5c6475" data-icon="gear"></span>System<span class="chev" data-icon="chevron"></span></button>
+      <button class="nav-item" data-go="more/log"><span class="ic" style="background:#394050" data-icon="log"></span>Protokoll<span class="chev" data-icon="chevron"></span></button>
     </div>
   </div>
-  <div class="card">
-    <h2>MIDI-Wiedergabe</h2>
-    <div class="toggle"><span>Aktiv</span><input type="checkbox" data-cfg="features.player.enabled"></div>
-    <div class="toggle"><span>Tasten beim Abspielen beleuchten</span><input type="checkbox" data-cfg="features.player.light_keys"></div>
-    <div id="player-ui">
-      <div class="list" id="song-list"></div>
-      <div class="btns" style="margin-top:8px"><label class="btn small" style="text-align:center">Datei hochladen<input type="file" id="song-upload" accept=".mid,.midi" multiple hidden></label><button class="btn small danger" id="player-stop">Stopp</button></div>
-      <p class="hint" id="player-status"></p>
-    </div>
-  </div>
-  <div class="card">
-    <h2>MIDI-Monitor</h2>
-    <div class="toggle"><span>Aktiv</span><input type="checkbox" id="monitor-toggle"></div>
-    <pre id="monitor-log"></pre>
-    <p class="hint">Zeigt, was das Piano sendet. Nützlich, um zu sehen, ob beim Ändern von Transpose eine SysEx-Nachricht kommt.</p>
-  </div>
-</section>
 
-<!-- ===== System ===== -->
-<section class="tab" id="tab-system">
-  <div class="card">
-    <h2>System</h2>
-    <div id="sys-info"></div>
-  </div>
-  <div class="card">
-    <h2>MIDI</h2>
-    <div id="midi-info"></div>
-    <div class="row"><label>Port-Filter</label><input type="text" data-cfg="midi.port_filter" placeholder="leer = automatisch" style="width:170px"></div>
-  </div>
-  <div class="card">
-    <h2>Display (LCD-Hat)</h2>
-    <div class="toggle"><span>Aktiv (Neustart nötig)</span><input type="checkbox" data-cfg="features.lcd.enabled"></div>
-    <div class="row"><label>Abschalten nach Minuten (0 = nie)</label><input type="number" min="0" max="120" data-cfg="features.lcd.off_after_min" data-int style="width:80px"></div>
-  </div>
-  <div class="card">
-    <h2>Aktionen</h2>
-    <div class="btns">
-      <button class="btn" id="sys-restart">Dienst neu starten</button>
-      <button class="btn" id="sys-update">Update (git pull)</button>
-      <button class="btn" id="sys-reboot">Neustart</button>
-      <button class="btn danger" id="sys-shutdown">Herunterfahren</button>
+  <!-- LED-Streifen -->
+  <div class="sub-page hidden" id="page-strip">
+    <button class="back" data-go="more">‹ Mehr</button>
+    <div class="card">
+      <h2>Testen</h2>
+      <div class="btns">
+        <button class="btn sm" data-test='{"kind":"keys","keys":[21,60,108],"seconds":10}'>3 Tasten</button>
+        <button class="btn sm" data-test='{"kind":"rgb","seconds":9}'>Farben</button>
+        <button class="btn sm" data-test='{"kind":"chase","seconds":8}'>Lauflicht</button>
+      </div>
+      <p class="hint">„3 Tasten“ lässt die LEDs über der tiefsten Taste, dem mittleren C und der höchsten Taste leuchten. Sitzen sie daneben, stelle unten Versatz und LED-Dichte ein. „Farben“ muss nacheinander Rot, Grün und Blau zeigen, sonst die Farbreihenfolge ändern.</p>
     </div>
-    <div class="btns" style="margin-top:8px"><button class="btn small" id="cfg-reset">Einstellungen zurücksetzen</button><button class="btn small" id="cfg-export">Einstellungen exportieren</button></div>
+    <div class="card">
+      <h2>Position</h2>
+      <div class="row"><label>Versatz</label><input type="range" min="-30" max="30" data-cfg="strip.led_offset"><span class="val" data-val="strip.led_offset" data-unit=" LED"></span></div>
+      <div class="row"><label>LEDs pro Taste</label><div class="seg" data-seg="strip.leds_per_key" data-int style="flex:1.4"><button data-v="1">1</button><button data-v="2">2</button><button data-v="3">3</button></div></div>
+      <label class="row"><span class="label">Richtung umkehren</span><span class="switch"><input type="checkbox" data-cfg="strip.reverse"><span></span></span></label>
+    </div>
+    <div class="card">
+      <h2>Streifen</h2>
+      <div class="row"><label>LEDs pro Meter</label><select id="density" style="max-width:150px"><option value="144">144</option><option value="120">120</option><option value="96">96</option><option value="72">72</option><option value="60">60</option><option value="0">eigener Wert</option></select></div>
+      <div class="row"><label>LED-Abstand (mm)</label><input type="number" step="0.01" min="1" data-cfg="strip.led_pitch_mm" data-float></div>
+      <div class="row"><label>Tastenbreite (mm)</label><input type="number" step="0.1" min="15" data-cfg="strip.key_pitch_mm" data-float></div>
+      <div class="row"><label>Anzahl LEDs</label><input type="number" min="1" max="2000" data-cfg="strip.led_count" data-int></div>
+      <div class="row"><label>Farbreihenfolge</label><select data-cfg="strip.color_order" style="max-width:120px"><option>GRB</option><option>RGB</option><option>BGR</option><option>RBG</option><option>GBR</option><option>BRG</option></select></div>
+      <div class="row"><label>Gamma</label><input type="range" min="1" max="3" step="0.1" data-cfg="strip.gamma" data-float><span class="val" data-val="strip.gamma"></span></div>
+    </div>
+    <div class="card">
+      <h2>Strom <span class="right sub" id="power-now"></span></h2>
+      <div class="row"><label>Netzteil-Limit (mA)</label><input type="number" step="100" min="0" data-cfg="strip.max_current_ma" data-int></div>
+      <p class="hint">Bevor die Stromaufnahme dieses Limit übersteigt, wird automatisch gedimmt. So bleibt die Spannung stabil und der Pi stürzt nicht ab. Für ein 3-A-Netzteil sind 2500 mA ein guter Wert, 0 schaltet den Schutz ab.</p>
+    </div>
+    <div class="card">
+      <h2>Anschluss</h2>
+      <div class="row"><label>Daten-Pin</label><select data-cfg="strip.gpio_pin" data-int style="max-width:200px"><option value="18">GPIO 18 (PWM)</option><option value="12">GPIO 12 (PWM)</option><option value="21">GPIO 21 (PCM)</option><option value="10">GPIO 10 (SPI)</option></select></div>
+      <p class="hint">Änderungen an Pin und LED-Anzahl gelten nach einem Neustart des Dienstes.</p>
+      <button class="btn block" data-action="restart" style="margin-top:10px">Dienst neu starten</button>
+    </div>
   </div>
-  <div class="card">
-    <h2>Protokoll</h2>
-    <div class="btns"><button class="btn small" id="log-load">Protokoll laden</button></div>
-    <pre id="log-view"></pre>
+
+  <!-- Transpose -->
+  <div class="sub-page hidden" id="page-transpose">
+    <button class="back" data-go="more">‹ Mehr</button>
+    <div class="card">
+      <h2>Mit dem Pedal erkennen</h2>
+      <label class="row"><span class="label">Pedal-Trick aktiv</span><span class="switch"><input type="checkbox" data-cfg="transpose.pedal_calibration.enabled"><span></span></span></label>
+      <div class="row"><label>Pedal</label><select data-cfg="transpose.pedal_calibration.control" data-int style="max-width:170px"><option value="67">Soft (links)</option><option value="66">Sostenuto (Mitte)</option><option value="64">Sustain (rechts)</option></select></div>
+      <div class="row"><label>Wie oft treten</label><input type="range" min="2" max="5" data-cfg="transpose.pedal_calibration.presses"><span class="val" data-val="transpose.pedal_calibration.presses" data-unit="×"></span></div>
+      <p class="hint">Tritt das Pedal schnell hintereinander und drück dann die tiefste Taste. So stellst du Transpose ohne Handy ein.</p>
+    </div>
+    <div class="card">
+      <h2>Direkt vom Piano übernehmen</h2>
+      <label class="row"><span class="label">Transpose vom Piano folgen</span><span class="switch"><input type="checkbox" data-cfg="transpose.roland_sysex.enabled"><span></span></span></label>
+      <p class="hint" id="sysex-state"></p>
+      <div class="divider"></div>
+      <ol class="steps" style="margin-top:6px">
+        <li>Am RD-700NX unter System → MIDI „Tx Edit Data“ einschalten.</li>
+        <li>Transpose am Piano auf <b>0</b> stellen, dann <b>Start</b> tippen.</li>
+        <li>Transpose auf <b>+1</b> stellen, <b>Weiter</b> tippen. Dann auf <b>+2</b>, wieder <b>Weiter</b>.</li>
+        <li><b>Fertig</b> tippen. Ab jetzt folgen die LEDs dem Piano.</li>
+      </ol>
+      <div class="btns"><button class="btn" id="learn-start">Start</button><button class="btn" id="learn-next" disabled>Weiter</button><button class="btn primary" id="learn-finish" disabled>Fertig</button></div>
+      <p class="hint" id="learn-state"></p>
+    </div>
+  </div>
+
+  <!-- Extras -->
+  <div class="sub-page hidden" id="page-extras">
+    <button class="back" data-go="more">‹ Mehr</button>
+    <p class="sub" style="margin:0 0 12px">Zusatzfunktionen sind ausgeschaltet, bis du sie hier aktivierst.</p>
+    <div class="card">
+      <label class="row"><span class="label"><b>Leerlauf-Animation</b></span><span class="switch"><input type="checkbox" data-cfg="features.idle_animation.enabled"><span></span></span></label>
+      <div data-show="features.idle_animation.enabled">
+        <div class="row"><label>Animation</label><select id="anim" data-cfg="features.idle_animation.animation" style="max-width:190px"></select></div>
+        <div class="row"><label>Nach</label><input type="range" min="1" max="60" data-cfg="features.idle_animation.after_min"><span class="val" data-val="features.idle_animation.after_min" data-unit=" min"></span></div>
+        <div class="row"><label>Helligkeit</label><input type="range" min="5" max="100" data-cfg="features.idle_animation.brightness"><span class="val" data-val="features.idle_animation.brightness" data-unit=" %"></span></div>
+      </div>
+    </div>
+    <div class="card">
+      <label class="row"><span class="label"><b>Presets per Pedal</b></span><span class="switch"><input type="checkbox" data-cfg="features.pedal_presets.enabled"><span></span></span></label>
+      <div data-show="features.pedal_presets.enabled">
+        <div class="row"><label>Pedal</label><select data-cfg="features.pedal_presets.control" data-int style="max-width:170px"><option value="66">Sostenuto (Mitte)</option><option value="67">Soft (links)</option></select></div>
+        <p class="hint">Jeder Tritt schaltet zum nächsten gespeicherten Preset.</p>
+      </div>
+    </div>
+    <div class="card">
+      <label class="row"><span class="label"><b>Synthesia &amp; Lern-Apps</b></span><span class="switch"><input type="checkbox" data-cfg="features.synthesia.enabled"><span></span></span></label>
+      <div data-show="features.synthesia.enabled">
+        <div class="row"><span class="label">Linke Hand</span><input type="color" class="pick" data-color="features.synthesia.left_color"></div>
+        <div class="row"><span class="label">Rechte Hand</span><input type="color" class="pick" data-color="features.synthesia.right_color"></div>
+        <label class="row"><span class="label">Nur Lern-Noten zeigen</span><span class="switch"><input type="checkbox" data-cfg="features.synthesia.hide_normal_notes"><span></span></span></label>
+        <p class="hint">In Synthesia „Key Lights: Finger-based channel“ wählen. Die nächsten Noten leuchten dann in den Handfarben.</p>
+      </div>
+    </div>
+    <div class="card">
+      <label class="row"><span class="label"><b>Aufnahme</b></span><span class="switch"><input type="checkbox" data-cfg="features.recorder.enabled"><span></span></span></label>
+      <div data-show="features.recorder.enabled">
+        <div class="btns"><button class="btn" id="rec-start">● Aufnehmen</button><button class="btn primary" id="rec-stop">Speichern</button><button class="btn" id="rec-cancel">Verwerfen</button></div>
+        <p class="hint" id="rec-state">Aufnahmen landen als MIDI-Datei in der Songliste.</p>
+      </div>
+    </div>
+    <div class="card">
+      <label class="row"><span class="label"><b>MIDI-Wiedergabe</b></span><span class="switch"><input type="checkbox" data-cfg="features.player.enabled"><span></span></span></label>
+      <div data-show="features.player.enabled">
+        <label class="row"><span class="label">Tasten beim Abspielen beleuchten</span><span class="switch"><input type="checkbox" data-cfg="features.player.light_keys"><span></span></span></label>
+        <div class="list" id="songs" style="margin:8px 0"></div>
+        <div class="btns"><label class="btn">Datei hochladen<input type="file" id="song-file" accept=".mid,.midi" multiple hidden></label><button class="btn danger" id="player-stop">Stopp</button></div>
+        <p class="hint" id="player-state"></p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Display -->
+  <div class="sub-page hidden" id="page-display">
+    <button class="back" data-go="more">‹ Mehr</button>
+    <div class="card">
+      <h2>Live-Ansicht</h2>
+      <div class="lcd">
+        <img id="lcd-img" alt="Display" width="160" height="160">
+        <div class="lcd-ctl">
+          <div class="pad">
+            <span></span><button class="btn" data-lcd="up">▲</button><span></span>
+            <button class="btn" data-lcd="left">◀</button><button class="btn" data-lcd="press">●</button><button class="btn" data-lcd="right">▶</button>
+            <span></span><button class="btn" data-lcd="down">▼</button><span></span>
+          </div>
+          <div class="keys3"><button class="btn sm" data-lcd="key1">K1</button><button class="btn sm" data-lcd="key2">K2</button><button class="btn sm" data-lcd="key3">K3</button></div>
+        </div>
+      </div>
+      <p class="hint">Joystick ◀ ▶ Helligkeit, ▲ ▼ Transpose, ● QR-Code. K1 Menü, K2 zurück, K3 alle LEDs aus.</p>
+    </div>
+    <div class="card">
+      <label class="row"><span class="label">Display verwenden</span><span class="switch"><input type="checkbox" data-cfg="features.lcd.enabled"><span></span></span></label>
+      <div class="row"><label>Ausschalten nach</label><input type="range" min="0" max="30" data-cfg="features.lcd.off_after_min"><span class="val" data-val="features.lcd.off_after_min" data-unit=" min"></span></div>
+      <p class="hint">0 = Display bleibt immer an. Ein Tastendruck oder eine neue Meldung (z. B. „WLAN verbunden“) weckt es wieder.</p>
+    </div>
+  </div>
+
+  <!-- MIDI -->
+  <div class="sub-page hidden" id="page-midi">
+    <button class="back" data-go="more">‹ Mehr</button>
+    <div class="card"><h2>Verbindung</h2><div id="midi-info"></div></div>
+    <div class="card">
+      <h2>Eingang</h2>
+      <div class="row"><label>Gerät</label><select id="midi-port" style="max-width:220px"></select></div>
+      <p class="hint">„Automatisch“ nimmt das erste angeschlossene Gerät. Steckst du das Piano ab, verbindet sich der Visualizer beim Wiederanstecken von selbst.</p>
+    </div>
+    <div class="card">
+      <h2>MIDI-Monitor</h2>
+      <label class="row"><span class="label">Nachrichten anzeigen</span><span class="switch"><input type="checkbox" id="monitor-on"><span></span></span></label>
+      <pre class="log" id="monitor" style="min-height:60px"></pre>
+      <p class="hint">Zeigt, was das Piano sendet. Hilfreich, um zu prüfen, ob beim Ändern von Transpose eine SysEx-Nachricht kommt.</p>
+    </div>
+  </div>
+
+  <!-- System -->
+  <div class="sub-page hidden" id="page-system">
+    <button class="back" data-go="more">‹ Mehr</button>
+    <div class="card"><h2>Gerät</h2><div id="sys-info"></div></div>
+    <div class="card"><h2>Dienste</h2><div id="sys-components"></div></div>
+    <div class="card">
+      <h2>Aktionen</h2>
+      <div class="stack">
+        <button class="btn block" data-action="update">Update installieren</button>
+        <button class="btn block" data-action="restart">Dienst neu starten</button>
+        <button class="btn block" data-action="reboot">Raspberry Pi neu starten</button>
+        <button class="btn danger block" data-action="shutdown">Ausschalten</button>
+      </div>
+    </div>
+    <div class="card">
+      <h2>Einstellungen</h2>
+      <div class="btns"><button class="btn" id="cfg-export">Sichern</button><label class="btn">Laden<input type="file" id="cfg-import" accept=".json" hidden></label><button class="btn danger" id="cfg-reset">Zurücksetzen</button></div>
+    </div>
+  </div>
+
+  <!-- Protokoll -->
+  <div class="sub-page hidden" id="page-log">
+    <button class="back" data-go="more">‹ Mehr</button>
+    <div class="card"><h2>Protokoll <button class="btn ghost sm right" id="log-refresh">Aktualisieren</button></h2><pre class="log" id="log"></pre></div>
   </div>
 </section>
 </main>
 
-<nav>
-  <button data-tab="start" class="active"><svg viewBox="0 0 24 24"><path d="M3 11l9-8 9 8v9a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></svg>Start</button>
-  <button data-tab="look"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 3a9 9 0 0 1 0 18"/></svg>Farben</button>
-  <button data-tab="transpose"><svg viewBox="0 0 24 24"><path d="M4 12h16M12 4v16"/></svg>Transpose</button>
-  <button data-tab="strip"><svg viewBox="0 0 24 24"><rect x="2" y="9" width="20" height="6" rx="3"/><path d="M6 12h.01M10 12h.01M14 12h.01M18 12h.01"/></svg>Strip</button>
-  <button data-tab="wifi"><svg viewBox="0 0 24 24"><path d="M2 8.5a15 15 0 0 1 20 0M5.5 12a10 10 0 0 1 13 0M9 15.5a5 5 0 0 1 6 0M12 19h.01"/></svg>WLAN</button>
-  <button data-tab="extras"><svg viewBox="0 0 24 24"><path d="M12 2l2.4 5 5.6.8-4 3.9.9 5.6L12 14.7 7.1 17.3 8 11.7 4 7.8 9.6 7z"/></svg>Extras</button>
-  <button data-tab="system"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>System</button>
+<nav class="tabs" id="tabs">
+  <button data-go="play" data-icon="play">Spielen</button>
+  <button data-go="light" data-icon="palette">Licht</button>
+  <button data-go="wifi" data-icon="wifi">WLAN</button>
+  <button data-go="more" data-icon="more">Mehr</button>
 </nav>
-<div class="toast" id="toast"></div>
-<script src="/app.js"></script>
+
+<script src="/static/core.js"></script>
+<script src="/static/wifi.js"></script>
+<script src="/static/app.js"></script>
 </body>
 </html>
